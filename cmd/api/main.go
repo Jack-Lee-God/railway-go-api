@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"goapi.railway.app/internal/database"
+	"goapi.railway.app/internal/models"
+	"gorm.io/gorm"
 )
 
 const version = "0.0.1"
@@ -17,7 +21,7 @@ type config struct {
 
 type application struct {
 	config config
-	logger *slog.Logger
+	db     *gorm.DB
 }
 
 func main() {
@@ -34,13 +38,23 @@ func main() {
 	// Set the port to run the API on
 	cfg.port = intPort
 
-	// create the logger
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	// Connect to database
+	db, err := database.ConnectDB()
+	if err != nil {
+		log.Printf("Failed to connect to database: %v", err)
+	} else {
+		log.Println("Connected to database successfully")
+		// Auto migrate models
+		err = db.AutoMigrate(&models.Bioskop{})
+		if err != nil {
+			log.Printf("Failed to migrate database: %v", err)
+		}
+	}
 
 	// create the application
 	app := &application{
 		config: cfg,
-		logger: logger,
+		db:     db,
 	}
 
 	// create the server
@@ -50,14 +64,13 @@ func main() {
 		IdleTimeout:  45 * time.Second,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
-	logger.Info("server started", "addr", srv.Addr)
+	log.Printf("server started on %s", srv.Addr)
 
 	// Start the server
 	err = srv.ListenAndServe()
-	logger.Error(err.Error())
-	os.Exit(1)
-
+	if err != nil {
+		log.Fatal(err)
+	}
 }
