@@ -1,16 +1,20 @@
 package main
 
 import (
-	"net/http"
-
-	"github.com/julienschmidt/httprouter"
+	"github.com/gin-gonic/gin"
 )
 
-func (app *application) routes() *httprouter.Router {
-	router := httprouter.New()
+func (app *application) routes() *gin.Engine {
+	router := gin.Default()
 
-	// Define the available routes
-	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
+	// Healthcheck
+	router.GET("/v1/healthcheck", app.healthcheckHandler)
+
+	// Bioskop routes
+	router.POST("/bioskop", app.createBioskopHandler)
+	router.GET("/bioskop", app.getBioskopHandler)
+	router.PUT("/bioskop/:id", app.updateBioskopHandler)
+	router.DELETE("/bioskop/:id", app.deleteBioskopHandler)
 
 	return router
 }
